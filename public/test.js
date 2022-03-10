@@ -114,6 +114,7 @@ async function loadData() {
       .call(zoomer)
         .on("wheel.zoom", null)
         .on("wheel", pan)
+      .select(".overlay").on("mousedown touchstart", (event) => event.stopImmediatePropagation(), true);
     genGradientLegend();
   }).catch((error) => {console.log(error);})
 };
