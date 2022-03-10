@@ -5,6 +5,7 @@ const width = 1000;
 const textLeft = 40;
 const marginLeft = 10;
 const marginRight = 10;
+const margintop = 10;
 const legendHeight = 5;
 const legendMargin = 5;
 const legendWidth = width / 4;
@@ -55,12 +56,19 @@ const svgbrush = d3.select("#brush-chart")
 svg.append("svg")
   .attr("id", "ylabels")
   .attr("x", 0)
-  .attr("height", height)
+  .attr("y", margintop)
+  .attr("height", height - margintop)
   .attr("width", legendWhitespace)
 
-svg.append("rect")
+svg.append("svg")
   .attr("id", "rightmargin")
   .attr("x", width - rightWhitespace)
+  .attr("y", margintop - 1)
+  .attr("height", height - margintop + 1)
+  .attr("width", rightWhitespace)
+
+const rightmargin = svg.select("#rightmargin");
+rightmargin.append("rect")
   .attr("height", height)
   .attr("width", rightWhitespace)
   .attr("fill", "white")
@@ -68,12 +76,20 @@ svg.append("rect")
 svg.append("rect")
   .attr("id", "leftmargin")
   .attr("x", 0)
-  .attr("height", height)
+  .attr("y", margintop)
+  .attr("height", height - margintop)
   .attr("width", legendWhitespace)
   .attr("fill", "white")
 
 const linearGradient = svg.append("defs").append("linearGradient")
-  .attr("id", "lg");
+  .attr("id", "lg")
+  .attr("x1", "0")
+  .attr("x2", "0")
+  .attr("y1", "1")
+  .attr("y2", "0");
+
+const gradientcolors = ["#0a1423","#28518d","#81c6df","#b9fff9","#fff7b9",
+        "#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"];
 
 const ylabels = d3.select("#ylabels");
 
@@ -95,8 +111,7 @@ async function loadData() {
     maxTemp = d3.quantile(temps, 1);
     grad = d3.scaleLinear()
       .domain([minTemp,-40,-10,0,10,40,60,80,110,maxTemp])
-      .range(["#0a1423","#28518d","#81c6df","#b9fff9","#fff7b9",
-        "#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"]);
+      .range(gradientcolors);
     console.log(grad.domain());
     origdata = data.filter(function (d) {
       if (((d.Year - 1880) % freq == 0) || d.Year == 2014) {
@@ -122,12 +137,13 @@ async function loadData() {
 const heatsvg = svg.append("svg") // generates the svg container for the heatmap 
   .attr("id", "hmsvg")
   .attr("cursor", "grab")
-  .attr("height", height)
-  .attr("width", width - border * 2)
+  .attr("y", margintop)
+  .attr("height", height - margintop)
+  .attr("width", width);
 
 heatsvg.attr("x", 0);
 var zoomer = d3.zoom()
-  .extent([[0,0], [width,height]])
+  .extent([[0,0], [width,height - margintop]])
   .on("zoom", zoomed);
 
 var hm = d3.select("#hmsvg");
@@ -479,19 +495,23 @@ function extractLabels(d) {
 
 function genGradientLegend() {
   var tickp = [];
+  const ext = d3.extent(grad.domain());
+  const mag = ext[1] - ext[0];
+  const gradoffsets = d3.map(grad.domain(), (d) => (d - ext[0]) / mag);
+  console.log(gradoffsets);
   linearGradient.selectAll("stop")
     .data(grad.domain().map((x, i, n) => {
         console.log(n.length);
         if ((i > 0) && (i < (n.length - 1))) {
-          tickp.push((10 + 80 * i / (n.length - 1)) * legendWidth / 100);
+          tickp.push((10 + 80 * (n.length - 1 - i) / (n.length - 1)) * legendWidth / 100);
           return {offset: `${10 + 80*i/(n.length - 1)}%`, color: grad(x)};
         }
         else if (i == 0) {
-          tickp.push(0);
+          tickp.push(squareSize * rows);
           return {offset: '0%', color: grad(x)};
         }
         else {
-          tickp.push(legendWidth);
+          tickp.push(0);
           return {offset: "80%", color: grad(x)};
         }
     }
@@ -500,14 +520,15 @@ function genGradientLegend() {
       .attr("offset", d => d.offset)
       .attr("stop-color", d => d.color);
   
-  svg.append("svg")
+  rightmargin.append("svg")
     .attr("id", "color-legend")
     .attr("stroke-width", "0.5px")
-    .attr("y", squareSize * rows + textSize + colorlegendWhitespace + legendMargin)
-    .attr("x", marginLeft)
+    .attr("x", "50%")
+    .attr("y", 1)
+    .attr("height", squareSize * rows)
     .append("rect")
-      .attr("width", legendWidth)
-      .attr("height", legendHeight)
+      .attr("height", squareSize * rows) 
+      .attr("width", legendHeight)
       .style("fill", "url(#lg)")
 
   var l = maxTemp - minTemp;
@@ -516,7 +537,8 @@ function genGradientLegend() {
   d3.select("#color-legend").append("g")
     .classed("color-legend-labels", true)
     .attr("color", "white")
-    .call(d3.axisBottom(d3.scaleLinear().domain(grad.domain()).range(tickp))
+    .attr("y", 1)
+    .call(d3.axisRight(d3.scaleLinear().domain(grad.domain()).range(tickp))
       .tickValues(grad.domain())
       .tickSize(legendHeight))
     .selectAll("text")
@@ -544,7 +566,7 @@ function zoomUpdate(d) {
       rows = 1;
       break;
   }
-  squareSize = (height - border * rows - textSize) / rows;
+  squareSize = (height - margintop - border * rows - textSize) / rows;
   viewablesquares = Math.floor((width - legendWhitespace - rightWhitespace) / (squareSize + border));
   console.log("squares in view: " + viewablesquares);
   extractLabels(d);
