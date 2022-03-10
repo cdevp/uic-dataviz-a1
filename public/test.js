@@ -40,6 +40,8 @@ var linedata = [];
 var viewablesquares = 0;
 var lintohm = 0;
 var brushmaxx = 0;
+var brush;
+var tickgap;
 
 d3.select("#d3-chart")
   .attr("width", "100%");
@@ -358,9 +360,14 @@ function pan(event) {
     }
     else if (newx < -maxtx) {
       heatsvg.attr("x", -maxtx);
+      svgbrush.select("#brush")
+        .call(brush.move, [(maxtx/lintohm) + legendWhitespace, (maxtx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
     }
     else {
       heatsvg.attr("x", newx);
+      svgbrush.select("#brush")
+        .call(brush.move, [-(newx/lintohm) + legendWhitespace, -(newx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
+      console.log(newx/lintohm + legendWhitespace)
     }
     console.log("hidden squares:");
     console.log(Math.floor((parseFloat(heatsvg.attr("x")) - 0.5) / (squareSize + border)));
@@ -553,11 +560,11 @@ function lineChart() {
   const yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
   const linepatht = d3.select("#linepaths").transition().duration(300).ease(d3.easeCubicIn);
 
-  const tickgap = (xScale(xScale.ticks()[1]) - xScale(xScale.ticks()[0])) / (xScale.ticks()[1] - xScale.ticks()[0]);
+  tickgap = (xScale(xScale.ticks()[1]) - xScale(xScale.ticks()[0])) / (xScale.ticks()[1] - xScale.ticks()[0]);
   lintohm = (squareSize + border) / tickgap;
   const defaultSelection = [legendWhitespace, legendWhitespace + viewablesquares * tickgap];
   brushmaxx = Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1;
-  const brush = d3.brushX()
+  brush = d3.brushX()
   .extent([[legendWhitespace, 0], [Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1, linechartheight]])
   .on("brush", brushmove)
   .on("end", null)
@@ -572,7 +579,10 @@ function lineChart() {
 
   svgbrush.select("#brush")
     .call(brush)
-    .call(brush.move, defaultSelection);
+    .call(brush.move, defaultSelection)
+    .call(zoomer)
+      .on("wheel.zoom", null)
+      .on("wheel", pan)
 
   svgbrush.select("#linxaxis") 
     .call(xAxis);
