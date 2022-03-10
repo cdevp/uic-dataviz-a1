@@ -17,7 +17,7 @@ var smallest = 20;
 var largest = 30;
 const height = (largest + border) * 8;
 const brushheight = (largest + border) * 2;
-const linechartheight = height / 4;
+const linechartheight = height / 3;
 var maxtx = 0;
 var grad;
 var categories = 0;
@@ -547,6 +547,7 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "brush");
 
+const linecolors = ["#0a1423","#28518d","#266a2c","#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"]
 function lineChart() {
   const xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
   const yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
@@ -585,14 +586,16 @@ function lineChart() {
       enter => enter
         .append("path")
         .attr("fill", "none")
-        .attr("stroke", "black")
+        .attr("stroke", "white")
         .attr("stroke-width", 1)
         .call(enter => enter.transition(linepatht)
-          .attr("d", d => line(d))),
+          .attr("d", (d, i) => line(d))
+          .attr("stroke", (d, i) => linecolors[i])),
       update => update
-        .attr("stroke", "black")
+        .attr("stroke", "white")
         .call(update => update.transition(linepatht)
-          .attr("d", d => line(d))),
+          .attr("d", (d, i) => line(d))
+          .attr("stroke", (d, i) => linecolors[i])),
       exit => exit.remove()
     );
 }
