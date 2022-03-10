@@ -10,6 +10,7 @@ const legendHeight = 5;
 const legendMargin = 5;
 const legendWidth = width / 4;
 const w = width - marginLeft - marginRight;
+var xScale, yScale;
 var minTemp = 0;
 var maxTemp = 0;
 var zoomLevel = 0;
@@ -18,7 +19,7 @@ var smallest = 20;
 var largest = 30;
 const height = (largest + border) * 8;
 const brushheight = (largest + border) * 2;
-const linechartheight = height / 3;
+const linechartheight = height / 1.5;
 var maxtx = 0;
 var grad;
 var categories = 0;
@@ -44,6 +45,7 @@ var brushmaxx = 0;
 var brush;
 var tickgap;
 var defaultSelection;
+var pointsAprox; 
 
 d3.select("#d3-chart")
   .attr("width", "100%");
@@ -129,10 +131,67 @@ async function loadData() {
       .call(zoomer)
         .on("wheel.zoom", null)
         .on("wheel", pan)
-      .select(".overlay").on("mousedown touchstart", (event) => {event.stopImmediatePropagation(), brushclick(event)}, true);
+      .select(".overlay")
+        .on("mousedown touchstart", (event) => {event.stopImmediatePropagation(), brushclick(event)}, true)
+        .on("mousemove", brushhover)
     genGradientLegend();
   }).catch((error) => {console.log(error);})
 }
+
+function findPoint(px, row) {
+  console.log("find point")
+  var sel = document.getElementById(`line-${row}`);
+  var pathLength = sel.getTotalLength();
+  var bounds = [0, pathLength];
+  var precision = 0.02;
+  var dist = 0;
+  var op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
+  for (i = 0; i < 30; i++) {
+    if (Math.abs(px - op.x) < 0.02) {
+      return op.y;
+    }
+    else if (px < op.x) {
+      bounds = [bounds[0], bounds[0] + (bounds[1] - bounds[0]) / 2];
+      op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
+    }
+    else if (px > op.x) {
+      bounds = [(bounds[1] - bounds[0]) / 2 + bounds[0], bounds[1]];
+      op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
+    }
+  }
+}
+
+
+function brushhover(event) {
+  var p = new DOMPoint(event.clientX, event.clientY);
+  var s = document.getElementById("brush-chart");
+  var coords = p.matrixTransform(s.getScreenCTM().inverse());
+  var yr = xScale.invert(coords.x) + 0.01;
+  if (yr >= Math.ceil(yr) - 0.01) yr = Math.ceil(yr);
+  else yr = Math.floor(yr);
+  var min = 999999;
+  var minr = 0;
+  var yp;
+  for (j = 0; j < rows; j++) {
+//    console.log("year: " + yr + "|temp: " + linedata[i][yr - 1880].temp);
+    var temp = findPoint(coords.x, j);     
+    console.log(`testing: ${temp}, row: ${j}`) 
+    if (Math.abs(temp - coords.y) < min) {
+      min = Math.abs(temp - coords.y);
+      minr = j;
+      yp = temp;
+    }
+  }
+
+  console.log(`mouse-coords: ${coords.y}, ypos: ${yp}, row: ${minr}`);
+  svgbrush.select(`#circle-${minr}`)
+    .attr("r", 2)
+    .attr("cx", coords.x)
+    .attr("cy", yp)
+    .attr("fill", "purple")
+}
+
+//TODO: PONER EL CIRCULO Y VINCULARLO A UN ARRAY CON X Y QUE LUEGO CAMBIA CUANDO SE USE LA FUNCION. USANDO JOIN ENTER
 function brushclick(event) {
   console.log("clicked on rush");
   var p = new DOMPoint(event.layerX, event.layerY);
@@ -140,6 +199,8 @@ function brushclick(event) {
   var coords = p.matrixTransform(s.getScreenCTM().inverse());
   var brushw = parseFloat(svgbrush.select(".selection").attr("width"));
   var overw = parseFloat(svgbrush.select(".overlay").attr("width"));
+  console.log(event);
+  if (event.buttons != 1) return;
   if (coords.x + brushw > overw + legendWhitespace) {
     heatsvg.attr("x", -(overw - brushw) * lintohm);
     svgbrush.select("#brush")
@@ -613,10 +674,18 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "brush");
 
+svgbrush.append("g")
+  .attr("id", "highlight-circles");
+
+for (i = 0; i < 8; i++) {
+  svgbrush.select("#highlight-circles").append("circle")
+    .attr("id", `circle-${i}`);
+}
+
 const linecolors = ["#0a1423","#28518d","#266a2c","#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"]
 function lineChart() {
-  const xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
-  const yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
+  xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
+  yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
   const linepatht = d3.select("#linepaths").transition().duration(300).ease(d3.easeCubicIn);
 
   tickgap = (xScale(xScale.ticks()[1]) - xScale(xScale.ticks()[0])) / (xScale.ticks()[1] - xScale.ticks()[0]);
@@ -629,7 +698,7 @@ function lineChart() {
   .on("end", null)
   const xAxis = d3.axisBottom(xScale)
     .tickFormat(d3.format("c"));
-  const yAxis = d3.axisLeft(yScale).ticks(linechartheight / (linechartheight / 5));
+  const yAxis = d3.axisLeft(yScale).ticks();
   const line = d3.line()
     .x(d => xScale(d.year))
     .y(d => yScale(d.temp))
@@ -646,9 +715,10 @@ function lineChart() {
     .join(
       enter => enter
         .append("path")
+        .attr("id", (d, i) => `line-${i}`)
         .attr("fill", "none")
         .attr("stroke", "white")
-        .attr("stroke-width", 1)
+        .attr("stroke-width", (10 - zoomLevel * 1.2) / 10)
         .call(enter => enter.transition(linepatht)
           .attr("d", (d, i) => line(d))
           .attr("stroke", (d, i) => linecolors[i])),
@@ -658,7 +728,7 @@ function lineChart() {
           .attr("d", (d, i) => line(d))
           .attr("stroke", (d, i) => linecolors[i])),
       exit => exit.remove()
-    );
+    )
 }
 
 function brushmove({selection}) {
@@ -673,8 +743,9 @@ function lineDataUpdate() {
   var l = linedata.length;
   switch (zoomLevel) {
     case 0:
-      while (l-- > 1) {
+      while (l > 1) {
         linedata.pop();
+        l--;
       }
       if (linedata.length == 0) {
         linedata.push(tempdata.filter(({row}) => row === 0));
@@ -684,8 +755,9 @@ function lineDataUpdate() {
       }
       break;
     case 1:
-      while (l-- > 2) {
+      while (l > 2) {
         linedata.pop();
+        l--;
       }
       if (linedata.length == 0) {
         linedata.push(tempdata.filter(({row}) => row === 0));
@@ -701,8 +773,9 @@ function lineDataUpdate() {
       }
     break;
     case 2: 
-      while (l-- > 4) {
+      while (l > 4) {
         linedata.pop();
+        l--;
       }
       if (linedata.length == 0) {
         for (i = 0; i < 4; i++) {
@@ -719,8 +792,9 @@ function lineDataUpdate() {
       }
       break;
     case 3:
-      while (l-- > 4) {
+      while (l > 4) {
         linedata.pop();
+        l--;
       }
       if (linedata.length == 0) {
         for (i = 0; i < 4; i++) {
@@ -737,8 +811,9 @@ function lineDataUpdate() {
       }
       break;
     case 4:
-      while (l-- > 8) {
+      while (l > 8) {
         linedata.pop();
+        l--;
       }
       if (linedata.length == 0) {
         for (i = 0; i < 8; i++) {
