@@ -76,7 +76,7 @@ const ylabels = d3.select("#ylabels");
 
 async function loadData() {
   var temps = [];
-  await d3.json("/data/test.json").then((data) => {
+  await d3.json("data/test.json").then((data) => {
     for (var i = 0; i < data.length; i++) {
       var vals = Object.values(data[i]);
       temps.push(vals[7]);
