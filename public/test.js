@@ -42,6 +42,7 @@ var lintohm = 0;
 var brushmaxx = 0;
 var brush;
 var tickgap;
+var defaultSelection;
 
 d3.select("#d3-chart")
   .attr("width", "100%");
@@ -107,6 +108,12 @@ async function loadData() {
     zoomUpdate(origdata);
     generateChart(origdata);
     lineChart(origdata);
+    svgbrush.select("#brush")
+      .call(brush)
+      .call(brush.move, defaultSelection)
+      .call(zoomer)
+        .on("wheel.zoom", null)
+        .on("wheel", pan)
     genGradientLegend();
   }).catch((error) => {console.log(error);})
 };
@@ -347,10 +354,16 @@ function pan(event) {
     else if (!zoomout) hypx = posx - (yearidx * (squareSize + border) + legendWhitespace) + squareSize;
 
     console.log("positionining in: " + hypx);
-    if (hypx > 0) heatsvg.attr("x", 0);
+    if (hypx > 0) {
+      heatsvg.attr("x", 0);
+      svgbrush.select("#brush")
+        .call(brush.move, [legendWhitespace, legendWhitespace + viewablesquares * tickgap]);
+    }
     else {
       console.log("positioning");
       heatsvg.attr("x", hypx);
+      svgbrush.select("#brush")
+        .call(brush.move, [-(hypx/lintohm) + legendWhitespace, -(hypx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
     }
   }
   else {
@@ -359,7 +372,6 @@ function pan(event) {
       heatsvg.attr("x", 0);
       svgbrush.select("#brush")
         .call(brush.move, [legendWhitespace, legendWhitespace + viewablesquares * tickgap]);
-
     }
     else if (newx < -maxtx) {
       heatsvg.attr("x", -maxtx);
@@ -372,8 +384,6 @@ function pan(event) {
         .call(brush.move, [-(newx/lintohm) + legendWhitespace, -(newx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
       console.log(newx/lintohm + legendWhitespace)
     }
-    console.log("hidden squares:");
-    console.log(Math.floor((parseFloat(heatsvg.attr("x")) - 0.5) / (squareSize + border)));
   }
 }
 
@@ -565,7 +575,7 @@ function lineChart() {
 
   tickgap = (xScale(xScale.ticks()[1]) - xScale(xScale.ticks()[0])) / (xScale.ticks()[1] - xScale.ticks()[0]);
   lintohm = (squareSize + border) / tickgap;
-  const defaultSelection = [legendWhitespace, legendWhitespace + viewablesquares * tickgap];
+  defaultSelection = [legendWhitespace, legendWhitespace + viewablesquares * tickgap];
   brushmaxx = Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1;
   brush = d3.brushX()
   .extent([[legendWhitespace, 0], [Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1, linechartheight]])
@@ -579,13 +589,6 @@ function lineChart() {
     .x(d => xScale(d.year))
     .y(d => yScale(d.temp))
     .curve(d3.curveNatural)
-
-  svgbrush.select("#brush")
-    .call(brush)
-    .call(brush.move, defaultSelection)
-    .call(zoomer)
-      .on("wheel.zoom", null)
-      .on("wheel", pan)
 
   svgbrush.select("#linxaxis") 
     .call(xAxis);
