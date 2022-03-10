@@ -357,6 +357,9 @@ function pan(event) {
     var newx = parseFloat(heatsvg.attr("x")) + event.wheelDeltaY;
     if (newx > 0) {
       heatsvg.attr("x", 0);
+      svgbrush.select("#brush")
+        .call(brush.move, [legendWhitespace, legendWhitespace + viewablesquares * tickgap]);
+
     }
     else if (newx < -maxtx) {
       heatsvg.attr("x", -maxtx);
