@@ -1,0 +1,49 @@
+html {
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+}
+
+body {
+    height: 100%;
+}
+div {
+    word-wrap: break-word;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+svg {
+    overflow: auto;
+}
+#d3-chart {
+    margin-top: 2.5%;
+    display: flex;
+}
+
+#heatmap-y-labels {
+    margin-right: 10px;
+}
+
+.color-legend-labels {
+    font-size: 0.35em;
+}
+
+.ylabel {
+    font-size: 0.60em;
+}
+
+.yearlabel {
+    font-size: 0.60em;
+}
+
+.hmsquare:hover {
+    filter: saturate(200%)
+}
+
+#linxaxis, #linyaxis {
+    font-size: 0.5em;
+    stroke-width: 0.5px;
+}
+
+#brush-chart {
+    overflow: visible;
+}
