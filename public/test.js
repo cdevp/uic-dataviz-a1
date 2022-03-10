@@ -129,10 +129,29 @@ async function loadData() {
       .call(zoomer)
         .on("wheel.zoom", null)
         .on("wheel", pan)
-      .select(".overlay").on("mousedown touchstart", (event) => event.stopImmediatePropagation(), true);
+      .select(".overlay").on("mousedown touchstart", (event) => {event.stopImmediatePropagation(), brushclick(event)}, true);
     genGradientLegend();
   }).catch((error) => {console.log(error);})
-};
+}
+function brushclick(event) {
+  console.log("clicked on rush");
+  var p = new DOMPoint(event.layerX, event.layerY);
+  var s = document.getElementById("brush-chart");
+  var coords = p.matrixTransform(s.getScreenCTM().inverse());
+  var brushw = parseFloat(svgbrush.select(".selection").attr("width"));
+  var overw = parseFloat(svgbrush.select(".overlay").attr("width"));
+  if (coords.x + brushw > overw + legendWhitespace) {
+    heatsvg.attr("x", -(overw - brushw) * lintohm);
+    svgbrush.select("#brush")
+      .call(brush.move, [overw - brushw + legendWhitespace, legendWhitespace + overw]);
+  }
+  else {
+    console.log(coords);
+    heatsvg.attr("x", -(brushw - 100) * lintohm);
+    svgbrush.select("#brush")
+      .call(brush.move, [coords.x, coords.x + brushw]);
+  }
+}
 
 const heatsvg = svg.append("svg") // generates the svg container for the heatmap 
   .attr("id", "hmsvg")
@@ -161,7 +180,7 @@ function generateChart(d) {
   console.log("temp data:");
   console.log(tempdata); 
 
-  const dt = d3.select("#hmsvg").transition().duration(350).ease(d3.easeCubicOut); // .heatmap transition instance definition
+  const dt = d3.select("#hmsvg").transition().duration(250).ease(d3.easeCubicOut); // .heatmap transition instance definition
 
   d3.select(".hmsquares").selectAll("rect")
     .data(tempdata)
@@ -211,6 +230,7 @@ function generateChart(d) {
           .attr("width", squareSize)
           .attr("opacity", "0%")
           .attr("pointer-events", "none")
+          .attr("font-size", `${squareSize / 3}px`)
           .append("text")
             .classed("heattext", true)
             .attr("x", "50%")
@@ -226,8 +246,9 @@ function generateChart(d) {
           .attr("x", d => d.x)
           .attr("y", d => d.y)
           .attr("height", squareSize)
-          .attr("width", squareSize),
-      exit => exit
+          .attr("width", squareSize)
+          .attr("font-size", `${squareSize / 3}px`),
+     exit => exit
         .remove()
     );
 
@@ -606,7 +627,6 @@ function lineChart() {
   .extent([[legendWhitespace, 0], [Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1, linechartheight]])
   .on("brush", brushmove)
   .on("end", null)
-
   const xAxis = d3.axisBottom(xScale)
     .tickFormat(d3.format("c"));
   const yAxis = d3.axisLeft(yScale).ticks(linechartheight / (linechartheight / 5));
