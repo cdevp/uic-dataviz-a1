@@ -88,7 +88,7 @@ const linearGradient = svg.append("defs").append("linearGradient")
   .attr("y1", "1")
   .attr("y2", "0");
 
-const gradientcolors = ["#0a1423","#28518d","#81c6df","#b9fff9","#fff7b9",
+const gradientcolors = ["#0a1423","#28518d","#81c6df","#b4e0f8","#fff7b9",
         "#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"];
 
 const ylabels = d3.select("#ylabels");
@@ -110,7 +110,7 @@ async function loadData() {
     minTemp = d3.quantile(temps, 0);
     maxTemp = d3.quantile(temps, 1);
     grad = d3.scaleLinear()
-      .domain([minTemp,-40,-10,0,10,40,60,80,110,maxTemp])
+      .domain([minTemp,-80,-40,-10,0,10,40,80,110,maxTemp])
       .range(gradientcolors);
     console.log(grad.domain());
     origdata = data.filter(function (d) {
@@ -497,13 +497,13 @@ function genGradientLegend() {
   var tickp = [];
   const ext = d3.extent(grad.domain());
   const mag = ext[1] - ext[0];
-  const gradoffsets = d3.map(grad.domain(), (d) => (d - ext[0]) / mag);
+  const gradoffsets = d3.map(grad.domain(), (d) => (d + 80) / 190);
   console.log(gradoffsets);
   linearGradient.selectAll("stop")
     .data(grad.domain().map((x, i, n) => {
         console.log(n.length);
         if ((i > 0) && (i < (n.length - 1))) {
-          tickp.push((10 + 80 * (n.length - 1 - i) / (n.length - 1)) * legendWidth / 100);
+          tickp.push((1 - gradoffsets[i] * 0.8) * (squareSize * rows - 40))
           return {offset: `${10 + 80*i/(n.length - 1)}%`, color: grad(x)};
         }
         else if (i == 0) {
@@ -511,8 +511,8 @@ function genGradientLegend() {
           return {offset: '0%', color: grad(x)};
         }
         else {
-          tickp.push(0);
-          return {offset: "80%", color: grad(x)};
+          tickp.push(-1);
+          return {offset: "100%", color: grad(x)};
         }
     }
     ))
@@ -537,12 +537,14 @@ function genGradientLegend() {
   d3.select("#color-legend").append("g")
     .classed("color-legend-labels", true)
     .attr("color", "white")
-    .attr("y", 1)
+    .attr("y", 0)
     .call(d3.axisRight(d3.scaleLinear().domain(grad.domain()).range(tickp))
       .tickValues(grad.domain())
       .tickSize(legendHeight))
     .selectAll("text")
       .attr("fill", "black")
+  
+  d3.select("#color-legend").select(".domain").remove();
 }
 
 function zoomUpdate(d) {
