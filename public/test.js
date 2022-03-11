@@ -50,6 +50,7 @@ var hlcirclecoord = [{x: legendWhitespace, y: 0, r: 0}];
 var hlcirclerad = 2;
 var hlcirclecolor = "#ff007f";
 var hlcirclet;
+var hlsquare = 0;
 
 
 d3.select("#d3-chart")
@@ -170,7 +171,7 @@ function updateCircle(x, y, r, rad) {
       exit => exit.remove()
     );
 
-  console.log(`point dat --> x: ${xScale.invert(x)}, y: ${yScale.invert(y)}, r: ${r}`)
+  console.log(`point data --> x: ${xScale.invert(x)}, y: ${yScale.invert(y)}, r: ${r}`)
 }
 
 function findPoint(px, row) {
@@ -202,6 +203,9 @@ function brushhover(event) {
   var s = document.getElementById("brush-chart");
   var coords = p.matrixTransform(s.getScreenCTM().inverse());
   var yr = xScale.invert(coords.x) + 0.01;
+
+  clearHighlight(hlsquare);
+
   if (yr >= Math.ceil(yr) - 0.01) yr = Math.ceil(yr);
   else yr = Math.floor(yr);
   var min = 999999;
@@ -217,6 +221,29 @@ function brushhover(event) {
   }
 
   updateCircle(coords.x, yp, minr, hlcirclerad)
+  if (Math.abs(Math.round(xScale.invert(coords.x)) - xScale.invert(coords.x)) < 0.15) {
+    highlightSquare(Math.round(xScale.invert(coords.x)), minr);
+  }
+}
+
+function clearHighlight() {
+  if (hlsquare == null) return;
+  const currsel = heatsvg.select(`#square-${hlsquare}`);
+  currsel.attr("filter", "saturate(100%)");
+  console.log("clear highlight");
+  console.log(heatsvg.select(`#square-${hlsquare}`));
+  console.log("--");
+  hlsquare = null;
+}
+
+function highlightSquare(year, row) {
+  var cols = origdata.length;
+  var p = row * cols + year % 1880;
+  hlsquare = p;
+  const currsel = heatsvg.select(`#square-${p}`);
+  currsel.attr("filter", "saturate(300%)");
+  console.log(`highlight: ${currsel}`);
+
 }
 
 function brushclick(event) {
@@ -275,6 +302,7 @@ function generateChart(d) {
     .join(
       enter => enter.append("rect")
           .classed("hmsquare", true)
+          .attr("id", d => "square-" + d.id)
           .attr("hidid", d => d.id)
           .attr("x", d => d.x)
           .attr("y", d => d.y)
@@ -706,7 +734,7 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "highlight-circles");
 
-const linecolors = ["#0a1423","#28518d","#266a2c","#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"]
+const linecolors = ["#0a1423","#28518d","#266a2c","#d89000","#ff8454","#ff7a05","#ff0004","#900000"]
 function lineChart() {
   xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
   yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
