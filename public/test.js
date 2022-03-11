@@ -1,4 +1,3 @@
-
 const border = 1;
 const textSize = 20;
 const width = 1000;
@@ -46,6 +45,12 @@ var brush;
 var tickgap;
 var defaultSelection;
 var pointsAprox; 
+var hlcircle;
+var hlcirclecoord = [{x: legendWhitespace, y: 0, r: 0}];
+var hlcirclerad = 2;
+var hlcirclecolor = "#ff007f";
+var hlcirclet;
+
 
 d3.select("#d3-chart")
   .attr("width", "100%");
@@ -54,6 +59,9 @@ const svg = d3.select("#svg-chart")
   .attr("viewBox", [0,0,width,height + colorlegendWhitespace + legendHeight + legendMargin + 20])
 const svgbrush = d3.select("#brush-chart")
   .attr("viewBox", [0,0,width,linechartheight]);
+
+svgbrush.append("g")
+  .attr("id", "hlcircle");
 
 svg.append("svg")
   .attr("id", "ylabels")
@@ -128,26 +136,52 @@ async function loadData() {
     svgbrush.select("#brush")
       .call(brush)
       .call(brush.move, defaultSelection)
-      .call(zoomer)
-        .on("wheel.zoom", null)
-        .on("wheel", pan)
       .select(".overlay")
         .on("mousedown touchstart", (event) => {event.stopImmediatePropagation(), brushclick(event)}, true)
         .on("mousemove", brushhover)
+        .on("wheel.zoom", null)
+        .on("wheel", pan)
+
+    svgbrush.select("#brush").select(".selection")
+      .on("mousemove", brushhover)
     genGradientLegend();
+    hlcircle = svgbrush.select("#hlcircle");
+    updateCircle(0,0,0,0)
   }).catch((error) => {console.log(error);})
 }
 
+function updateCircle(x, y, r, rad) {
+  hlcirclecoord[0].x = x;
+  hlcirclecoord[0].y = y;
+  hlcirclecoord[0].r = r;
+
+  hlcircle.selectAll("circle")
+    .data(hlcirclecoord)
+    .join (
+      enter => enter.append("circle")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", rad)
+        .attr("fill", hlcirclecolor),
+      update => update
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", rad),
+      exit => exit.remove()
+    );
+
+  console.log(`point dat --> x: ${xScale.invert(x)}, y: ${yScale.invert(y)}, r: ${r}`)
+}
+
 function findPoint(px, row) {
-  console.log("find point")
   var sel = document.getElementById(`line-${row}`);
   var pathLength = sel.getTotalLength();
   var bounds = [0, pathLength];
   var precision = 0.02;
-  var dist = 0;
   var op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
-  for (i = 0; i < 30; i++) {
-    if (Math.abs(px - op.x) < 0.02) {
+  
+  for (let i = 0; i < 30; i++) {
+    if (Math.abs(px - op.x) < precision) {
       return op.y;
     }
     else if (px < op.x) {
@@ -159,8 +193,9 @@ function findPoint(px, row) {
       op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
     }
   }
-}
 
+  return op.y;
+}
 
 function brushhover(event) {
   var p = new DOMPoint(event.clientX, event.clientY);
@@ -172,10 +207,8 @@ function brushhover(event) {
   var min = 999999;
   var minr = 0;
   var yp;
-  for (j = 0; j < rows; j++) {
-//    console.log("year: " + yr + "|temp: " + linedata[i][yr - 1880].temp);
+  for (let j = 0; j < rows; j++) {
     var temp = findPoint(coords.x, j);     
-    console.log(`testing: ${temp}, row: ${j}`) 
     if (Math.abs(temp - coords.y) < min) {
       min = Math.abs(temp - coords.y);
       minr = j;
@@ -183,15 +216,9 @@ function brushhover(event) {
     }
   }
 
-  console.log(`mouse-coords: ${coords.y}, ypos: ${yp}, row: ${minr}`);
-  svgbrush.select(`#circle-${minr}`)
-    .attr("r", 2)
-    .attr("cx", coords.x)
-    .attr("cy", yp)
-    .attr("fill", "purple")
+  updateCircle(coords.x, yp, minr, hlcirclerad)
 }
 
-//TODO: PONER EL CIRCULO Y VINCULARLO A UN ARRAY CON X Y QUE LUEGO CAMBIA CUANDO SE USE LA FUNCION. USANDO JOIN ENTER
 function brushclick(event) {
   console.log("clicked on rush");
   var p = new DOMPoint(event.layerX, event.layerY);
@@ -429,6 +456,7 @@ function zoomed() {
 }
 function pan(event) {
   console.log("wheel pan");
+  var source = d3.select(event.target).attr("class");
   var posx = parseFloat(heatsvg.attr("x")) + parseFloat(d3.select(event.target).attr("x"));
   var yearidx =  Math.floor((parseFloat(d3.select(event.target).attr("x")) - legendWhitespace) / (squareSize + border));
   var left = (event.layerX / squareSize) < 0.5 ? true : false;
@@ -436,6 +464,7 @@ function pan(event) {
   
   if (event.shiftKey) {
     console.log("zooming with wheel");
+    updateCircle(0,0,0,0); 
     if (event.wheelDeltaY > 0) {
       zoomLevel = Math.min(zoomLevel + 1, 4);
       zoomout = false;
@@ -512,7 +541,7 @@ function extractLabels(d) {
   switch (zoomLevel) {
     case 0:
       var x = labeldata.length;
-      for (i = 1; i < x; i++) {
+      for (let i = 1; i < x; i++) {
         labeldata.pop();
       }
       if (labeldata.length == 1) {labeldata[0] = Object.keys(d[0])[1];}
@@ -520,53 +549,53 @@ function extractLabels(d) {
       break;
     case 1:
       var x = labeldata.length;
-      for (i = 2; i < x; i++) {
+      for (let i = 2; i < x; i++) {
         labeldata.pop();
       }
       var j = 2;
-      for (i = 0; i < labeldata.length; i++) {
+      for (let i = 0; i < labeldata.length; i++) {
         labeldata[i] = (Object.keys(d[0])[j++]);
       }
-      for (i = labeldata.length; i < 2; i++) {
+      for (let i = labeldata.length; i < 2; i++) {
         labeldata.push(Object.keys(d[0])[j++]);
       }
       break;
     case 2:
       var x = labeldata.length;
-      for (i = 4; i < x; i++) {
+      for (let i = 4; i < x; i++) {
         labeldata.pop();
       }
       var j = 7;
-      for (i = 0; i < labeldata.length; i++) {
+      for (let i = 0; i < labeldata.length; i++) {
         labeldata[i] = (Object.keys(d[0])[j++]);
       }
-      for (i = labeldata.length; i < 4; i++) {
+      for (let i = labeldata.length; i < 4; i++) {
         labeldata.push(Object.keys(d[0])[j++]);
       }
       break;
     case 3: 
       var x = labeldata.length;
-      for (i = 4; i < x; i++) {
+      for (let i = 4; i < x; i++) {
         labeldata.pop();
       }
       var j = 11;
-      for (i = 0; i < labeldata.length; i++) {
+      for (let i = 0; i < labeldata.length; i++) {
         labeldata[i] = (Object.keys(d[0])[j++]);
       }
-      for (i = labeldata.length; i < 4; i++) {
+      for (let i = labeldata.length; i < 4; i++) {
         labeldata.push(Object.keys(d[0])[j++]);
       }
       break;
     case 4:
       var x = labeldata.length;
-      for (i = 8; i < x; i++) {
+      for (let i = 8; i < x; i++) {
         labeldata.pop();
       }
       var j = 7;
-      for (i = 0; i < labeldata.length; i++) {
+      for (let i = 0; i < labeldata.length; i++) {
         labeldata[i] = (Object.keys(d[0])[j++]);
       }
-      for (i = labeldata.length; i < 8; i++) {
+      for (let i = labeldata.length; i < 8; i++) {
         labeldata.push(Object.keys(d[0])[j++]);
       }
     default:
@@ -677,11 +706,6 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "highlight-circles");
 
-for (i = 0; i < 8; i++) {
-  svgbrush.select("#highlight-circles").append("circle")
-    .attr("id", `circle-${i}`);
-}
-
 const linecolors = ["#0a1423","#28518d","#266a2c","#ffdc72","#ff8454","#ff7a05","#ff0004","#900000"]
 function lineChart() {
   xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
@@ -695,7 +719,7 @@ function lineChart() {
   brush = d3.brushX()
   .extent([[legendWhitespace, 0], [Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1, linechartheight]])
   .on("brush", brushmove)
-  .on("end", null)
+  .on("end", (event) => console.log(event));
   const xAxis = d3.axisBottom(xScale)
     .tickFormat(d3.format("c"));
   const yAxis = d3.axisLeft(yScale).ticks();
@@ -764,10 +788,10 @@ function lineDataUpdate() {
         linedata.push(tempdata.filter(({row}) => row === 1));
       }
       else {
-        for (i = 0; i < l; i++) {
+        for (let i = 0; i < l; i++) {
           linedata[i] = tempdata.filter(({row}) => row === i);
         }
-        for (i = l; i < 2; i++) {
+        for (let i = l; i < 2; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
@@ -778,15 +802,15 @@ function lineDataUpdate() {
         l--;
       }
       if (linedata.length == 0) {
-        for (i = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
       else {
-        for (i = 0; i < l; i++) {
+        for (let i = 0; i < l; i++) {
           linedata[i] = tempdata.filter(({row}) => row === i);
         }
-        for (i = l; i < 4; i++) {
+        for (let i = l; i < 4; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
@@ -797,15 +821,15 @@ function lineDataUpdate() {
         l--;
       }
       if (linedata.length == 0) {
-        for (i = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
       else {
-        for (i = 0; i < l; i++) {
+        for (let i = 0; i < l; i++) {
           linedata[i] = tempdata.filter(({row}) => row === i);
         }
-        for (i = l; i < 4; i++) {
+        for (let i = l; i < 4; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
@@ -816,15 +840,15 @@ function lineDataUpdate() {
         l--;
       }
       if (linedata.length == 0) {
-        for (i = 0; i < 8; i++) {
+        for (let i = 0; i < 8; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
       else {
-        for (i = 0; i < l; i++) {
+        for (let i = 0; i < l; i++) {
           linedata[i] = tempdata.filter(({row}) => row === i);
         }
-        for (i = l; i < 8; i++) {
+        for (let i = l; i < 8; i++) {
           linedata.push(tempdata.filter(({row}) => row === i));
         }
       }
@@ -836,7 +860,7 @@ function lineDataUpdate() {
 
 function extractTemp(d) {
   var dif = tempdata.length - d.length * rows;
-  for (i = 0; i < dif; i++) {
+  for (let i = 0; i < dif; i++) {
     tempdata.pop();
   }
 
@@ -848,7 +872,7 @@ function extractTemp(d) {
 
   switch (zoomLevel) {
     case 0:
-      for (i = 0; i < tempdata.length; i++) {
+      for (let i = 0; i < tempdata.length; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length; 
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -863,7 +887,7 @@ function extractTemp(d) {
             break;
         }
       }
-      for (i = tempdata.length; i < d.length * rows; i++) {
+      for (let i = tempdata.length; i < d.length * rows; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length; 
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -882,7 +906,7 @@ function extractTemp(d) {
       }
       break;
     case 1:
-      for (i = 0; i < tempdata.length; i++) {
+      for (let i = 0; i < tempdata.length; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length; 
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -900,7 +924,7 @@ function extractTemp(d) {
             break;
         }
       }
-      for (i = tempdata.length; i < d.length * rows; i++) {
+      for (let i = tempdata.length; i < d.length * rows; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length; 
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -929,7 +953,7 @@ function extractTemp(d) {
       }
       break;
     case 2:
-      for (i = 0; i < tempdata.length; i++) {
+      for (let i = 0; i < tempdata.length; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -953,7 +977,7 @@ function extractTemp(d) {
             break;
         }
       }
-      for (i = tempdata.length; i < d.length * rows; i++) {
+      for (let i = tempdata.length; i < d.length * rows; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -1002,7 +1026,7 @@ function extractTemp(d) {
       }
       break;
     case 3:
-      for (i = 0; i < tempdata.length; i++) {
+      for (let i = 0; i < tempdata.length; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -1025,7 +1049,7 @@ function extractTemp(d) {
             break;
         }
       }
-      for (i = tempdata.length; i < d.length * rows; i++) {
+      for (let i = tempdata.length; i < d.length * rows; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -1074,7 +1098,7 @@ function extractTemp(d) {
       }
       break;
     case 4:
-      for (i = 0; i < tempdata.length; i++) {
+      for (let i = 0; i < tempdata.length; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
@@ -1109,7 +1133,7 @@ function extractTemp(d) {
             break;
         }
       }
-      for (i = tempdata.length; i < d.length * rows; i++) {
+      for (let i = tempdata.length; i < d.length * rows; i++) {
         var r = Math.floor(i / d.length);
         var rem = i % d.length;
         var px = rem * squareSize + border * rem + legendWhitespace;
