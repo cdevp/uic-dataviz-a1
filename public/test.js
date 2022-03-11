@@ -50,7 +50,7 @@ var hlcirclecoord = [{x: legendWhitespace, y: 0, r: 0}];
 var hlcirclerad = 2;
 var hlcirclecolor = "#ff007f";
 var hlcirclet;
-var hlsquare = 0;
+var hlsquare = null;
 
 
 d3.select("#d3-chart")
@@ -142,9 +142,13 @@ async function loadData() {
         .on("mousemove", brushhover)
         .on("wheel.zoom", null)
         .on("wheel", pan)
-
+    
     svgbrush.select("#brush").select(".selection")
       .on("mousemove", brushhover)
+      .on("wheel.zoom", null)
+      .on("wheel", pan)
+
+
     genGradientLegend();
     hlcircle = svgbrush.select("#hlcircle");
     updateCircle(0,0,0,0)
@@ -170,18 +174,16 @@ function updateCircle(x, y, r, rad) {
         .attr("r", rad),
       exit => exit.remove()
     );
-
-  console.log(`point data --> x: ${xScale.invert(x)}, y: ${yScale.invert(y)}, r: ${r}`)
 }
 
 function findPoint(px, row) {
   var sel = document.getElementById(`line-${row}`);
   var pathLength = sel.getTotalLength();
   var bounds = [0, pathLength];
-  var precision = 0.02;
+  var precision = 0.001;
   var op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
   
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 50; i++) {
     if (Math.abs(px - op.x) < precision) {
       return op.y;
     }
@@ -202,12 +204,9 @@ function brushhover(event) {
   var p = new DOMPoint(event.clientX, event.clientY);
   var s = document.getElementById("brush-chart");
   var coords = p.matrixTransform(s.getScreenCTM().inverse());
-  var yr = xScale.invert(coords.x) + 0.01;
 
   clearHighlight(hlsquare);
 
-  if (yr >= Math.ceil(yr) - 0.01) yr = Math.ceil(yr);
-  else yr = Math.floor(yr);
   var min = 999999;
   var minr = 0;
   var yp;
@@ -230,10 +229,11 @@ function clearHighlight() {
   if (hlsquare == null) return;
   const currsel = heatsvg.select(`#square-${hlsquare}`);
   currsel.attr("filter", "saturate(100%)");
-  console.log("clear highlight");
-  console.log(heatsvg.select(`#square-${hlsquare}`));
-  console.log("--");
   hlsquare = null;
+  d3.select("#hmtemp-" + currsel.attr("hidid"))
+    .transition()
+    .ease(d3.easeCubicOut)
+    .style("opacity", "0%")
 }
 
 function highlightSquare(year, row) {
@@ -242,7 +242,8 @@ function highlightSquare(year, row) {
   hlsquare = p;
   const currsel = heatsvg.select(`#square-${p}`);
   currsel.attr("filter", "saturate(300%)");
-  console.log(`highlight: ${currsel}`);
+  d3.select("#hmtemp-" + currsel.attr("hidid"))
+    .style("opacity", "100%")
 
 }
 
@@ -378,7 +379,7 @@ function generateChart(d) {
   
   var labelheight = ((squareSize + border) * rows) / labeldata.length;
 
-  const ylabt = d3.select("#ylabels").transition().duration(1000);
+  const ylabt = d3.select("#ylabels").transition().duration(500);
 
   ylabels.selectAll("rect")
         .data(labeldata)
@@ -401,23 +402,22 @@ function generateChart(d) {
           .join(
             enter => enter.append("text")
               .attr("x", legendWhitespace / 2)
-              .attr("y", (d, i, n) => -(n.length - i) * squareSize)
+              .attr("y", (d, i, n) => -50 + (i * labelheight + (i + 1) * labelheight) / 2)
               .attr("text-anchor", "middle")
+              .attr("dominant-baseline", "middle")
               .attr("fill", "black")
+              .attr("font-size", `${(1 - zoomLevel*.1)}em`)
               .text(d => d)
               .call(enter => enter.transition(ylabt)
-                .ease(d3.easeBounceIn)
-                .attr("y", (d, i) => (i * labelheight + border * i + (i + 1) * labelheight + border * (i + 1)) / 2)),
+                .attr("y", (d, i) => (i * labelheight + (i + 1) * labelheight) / 2)),
             update => update
               .text("")
-              .attr("y", (d, i, n) => -(n.length - i) * squareSize)
+              .attr("font-size", `${(1 - zoomLevel*.1)}em`)
               .call(update => update.transition(ylabt)
-                .ease(d3.easeBounceOut)
-                .attr("y", (d, i) => (i * labelheight + border * i + (i + 1) * labelheight + border * (i + 1)) / 2)
+                .attr("y", (d, i) => (i * labelheight + (i + 1) * labelheight) / 2)
                 .text(d => d)),
             exit => exit
               .call(exit => exit.transition(ylabt)
-                .ease(d3.easeBounceOut)
                 .attr("y", height * 2))
               .remove()
           )
@@ -556,6 +556,10 @@ function showTemp() {
     .transition()
     .ease(d3.easeBounceIn)
     .style("opacity", "100%")
+  
+  var id = parseInt(d3.select(this).attr("hidid"));
+  console.log(`${tempdata[id].year}  ${tempdata[id].temp}`);
+  updateCircle(xScale(tempdata[id].year), yScale(tempdata[id].temp), tempdata[id].row, hlcirclerad);
 }
 
 function hideTemp() {
@@ -734,7 +738,7 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "highlight-circles");
 
-const linecolors = ["#0a1423","#28518d","#266a2c","#d89000","#ff8454","#ff7a05","#ff0004","#900000"]
+const linecolors = ["#0a1423","#28518d","#266a2c","#d89000","#ff8454","#aa00ff","#ff0004","#900000"]
 function lineChart() {
   xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
   yScale = d3.scaleLinear(d3.extent(d3.map(tempdata, d => d.temp)), [linechartheight, 0]).nice();
@@ -754,7 +758,7 @@ function lineChart() {
   const line = d3.line()
     .x(d => xScale(d.year))
     .y(d => yScale(d.temp))
-    .curve(d3.curveNatural)
+    .curve(d3.curveMonotoneX)
 
   svgbrush.select("#linxaxis") 
     .call(xAxis);
@@ -770,7 +774,7 @@ function lineChart() {
         .attr("id", (d, i) => `line-${i}`)
         .attr("fill", "none")
         .attr("stroke", "white")
-        .attr("stroke-width", (10 - zoomLevel * 1.2) / 10)
+        .attr("stroke-width", (10 - zoomLevel * 1.1) / 10)
         .call(enter => enter.transition(linepatht)
           .attr("d", (d, i) => line(d))
           .attr("stroke", (d, i) => linecolors[i])),
