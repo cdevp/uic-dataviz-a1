@@ -7,18 +7,27 @@ html {
 
 body {
     height: 100%;
-    position: relative;
-    overflow: hidden
+    overflow: hidden;
 }
 
-#test {
+#main {
+    display: table;
+    position: absolute;
     height: 100%;
     width: 100%;
-    align-items: center;
-    position: absolute;
-    top: 50%;
-    margin-top: -25%;
+    top: 0;
+    left: 0;
 }
+
+#center {
+    display: table-cell;
+    vertical-align: top;
+}
+
+#content {
+    margin-top: 5%;
+}
+
 div {
     word-wrap: break-word;
     margin-top: 5px;

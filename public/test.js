@@ -1,6 +1,6 @@
 const border = 1;
 const textSize = 20;
-const width = 1000;
+const width = 1300;
 const textLeft = 40;
 const marginLeft = 10;
 const marginRight = 10;
@@ -56,7 +56,7 @@ d3.select("#chart-title").append("svg")
   .attr("viewBox", [0,0,width,20])
   .append("text")
   .attr("x", legendWhitespace * 0.25)
-  .attr("y", 20)
+  .attr("y", 15)
   .text("Historical temperature (F\xB0) time series")
 d3.select("#d3-chart")
   .attr("width", "100%");
@@ -75,8 +75,8 @@ svgbrush.append("g")
 svg.append("svg")
   .attr("id", "ylabels")
   .attr("x", 0)
-  .attr("y", margintop)
-  .attr("height", height - margintop)
+  .attr("y", margintop - 1)
+  .attr("height", height - margintop + 1)
   .attr("width", legendWhitespace)
 
 svg.append("svg")
@@ -95,8 +95,8 @@ rightmargin.append("rect")
 svg.append("rect")
   .attr("id", "leftmargin")
   .attr("x", 0)
-  .attr("y", margintop)
-  .attr("height", height - margintop)
+  .attr("y", margintop - 1)
+  .attr("height", height - margintop + 1)
   .attr("width", legendWhitespace)
   .attr("fill", "white")
 
