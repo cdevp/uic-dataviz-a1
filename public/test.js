@@ -60,7 +60,7 @@ d3.select("#chart-title").append("svg")
   .append("text")
   .attr("x", legendWhitespace * 0.25)
   .attr("y", 20)
-  .text("Historical zonal annual means (F\xB0) time series (1880 - 2014)")
+  .text("Historical zonal annual means (C\xB0) time series (1880 - 2014)")
 d3.select("#d3-chart")
   .attr("width", "100%");
 
