@@ -689,6 +689,10 @@ function showTemp() {
   
   var id = parseInt(d3.select(this).attr("hidid"));
   updateCircle(xScale(tempdata[id].year), yScale(tempdata[id].temp), tempdata[id].row, hlcirclerad);
+  caption[0].year = tempdata[id].year;
+  caption[0].temp = tempdata[id].temp;
+  caption[0].series = labeldata[tempdata[id].row];
+  updateTextBox(xScale(tempdata[id].year), yScale(tempdata[id].temp));
 }
 
 function hideTemp() {
@@ -696,6 +700,11 @@ function hideTemp() {
     .transition()
     .ease(d3.easeBounceOut)
     .style("opacity", "0%")
+  caption[0].year = 0;
+  caption[0].temp = 0;
+  caption[0].series = "";
+
+  updateTextBox(0,0);
 }
 
 function extractLabels(d) {
