@@ -5,8 +5,7 @@ const textLeft = 40;
 const marginLeft = 10;
 const marginRight = 10;
 const margintop = 10;
-const legendHeight = 5;
-const legendMargin = 5;
+const legendHeight = 7.5;
 const legendWidth = width / 4;
 const w = width - marginLeft - marginRight;
 var xScale, yScale;
@@ -53,11 +52,17 @@ var hlcirclet;
 var hlsquare = null;
 
 
+d3.select("#chart-title").append("svg")
+  .attr("viewBox", [0,0,width,20])
+  .append("text")
+  .attr("x", legendWhitespace * 0.25)
+  .attr("y", 20)
+  .text("Historical temperature (F\xB0) time series")
 d3.select("#d3-chart")
   .attr("width", "100%");
 d3.select("#linebrush")
 const svg = d3.select("#svg-chart")
-  .attr("viewBox", [0,0,width,height + colorlegendWhitespace + legendHeight + legendMargin + 20])
+  .attr("viewBox", [0,0,width,height + colorlegendWhitespace + legendHeight])
 const svgbrush = d3.select("#brush-chart")
   .attr("viewBox", [0,0,width,linechartheight]);
 
@@ -463,13 +468,27 @@ function generateChart(d) {
     .attr("width", 0.5)
     .attr("fill", "black")
   svg.append("rect")
+    .attr("id", "yaxisbar2")
+    .attr("x", width - rightWhitespace + 0.5 - border)
+    .attr("y", margintop)
+    .attr("height", (squareSize + border) * rows - border)
+    .attr("width", 0.5)
+    .attr("fill", "black")
+ 
+  svg.append("rect")
     .attr("id", "xaxisbar")
     .attr("x", legendWhitespace - 0.5)
     .attr("y", margintop + (squareSize + border) * rows - border)
     .attr("height", 0.5)
-    .attr("width", width - rightWhitespace - legendWhitespace)
+    .attr("width", width - rightWhitespace - legendWhitespace + 0.5)
     .attr("fill", "black")
-
+  svg.append("rect")
+    .attr("id", "xaxisbar2")
+    .attr("x", legendWhitespace - 0.5)
+    .attr("y", margintop)
+    .attr("height", 0.5)
+    .attr("width", width - rightWhitespace - legendWhitespace + 0.5)
+    .attr("fill", "black")
 
 }
 

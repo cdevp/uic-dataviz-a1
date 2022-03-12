@@ -14,9 +14,6 @@ div {
 svg {
     overflow: auto;
 }
-#d3-chart {
-    margin-top: 2.5%;
-}
 
 #heatmap-y-labels {
     margin-right: 10px;
