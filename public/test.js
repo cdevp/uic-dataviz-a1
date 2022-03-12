@@ -25,7 +25,7 @@ var categories = 0;
 var labeldata = [];
 var tempdata = [];
 var squareSize = 0;
-var legendWhitespace = 100;
+var legendWhitespace = 80;
 var rightWhitespace = 50;
 var colorlegendWhitespace = 10;
 var rows = 1;
@@ -63,6 +63,9 @@ const svgbrush = d3.select("#brush-chart")
 
 svgbrush.append("g")
   .attr("id", "hlcircle");
+
+svgbrush.append("g")
+  .attr("id", "line-legend")
 
 svg.append("svg")
   .attr("id", "ylabels")
@@ -277,6 +280,7 @@ const heatsvg = svg.append("svg") // generates the svg container for the heatmap
   .attr("width", width);
 
 heatsvg.attr("x", 0);
+
 var zoomer = d3.zoom()
   .extent([[0,0], [width,height - margintop]])
   .on("zoom", zoomed);
@@ -290,9 +294,7 @@ hm.append("g")
   .classed("yearlabels", true)
   .attr("pointer-events", "none");
 
-function testtouch(event) {
-  console.log(event);
-}
+
 function generateChart(d) {
   // update variables dependent on zoom level
 
@@ -453,6 +455,22 @@ function generateChart(d) {
   d3.select("#leftmargin").raise();
   d3.select("#rightmargin").raise();
   d3.select("#ylabels").raise();
+  svg.append("rect")
+    .attr("id", "yaxisbar")
+    .attr("x", legendWhitespace - 0.5)
+    .attr("y", margintop)
+    .attr("height", (squareSize + border) * rows - border)
+    .attr("width", 0.5)
+    .attr("fill", "black")
+  svg.append("rect")
+    .attr("id", "xaxisbar")
+    .attr("x", legendWhitespace - 0.5)
+    .attr("y", margintop + (squareSize + border) * rows - border)
+    .attr("height", 0.5)
+    .attr("width", width - rightWhitespace - legendWhitespace)
+    .attr("fill", "black")
+
+
 }
 
 function dragstart(event) {
@@ -472,8 +490,6 @@ function dragend() {
 
 function dragged(event, d) {
   var newx;
-  var overw = parseFloat(svgbrush.select(".overlay").attr("width"));
-  var brushw = parseFloat(svgbrush.select(".selection").attr("width"));
 
   if (event.sourceEvent.type == "touchmove") {
     newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.touches[0].clientX - dragdx) / dragspeed;
@@ -507,6 +523,7 @@ function zoomed() {
   console.log("zooming")
   return;
 }
+
 function pan(event) {
   console.log("wheel pan");
   var source = d3.select(event.target).attr("class");
@@ -661,6 +678,47 @@ function extractLabels(d) {
   return labeldata;
 }
 
+function genLineLegend() {
+  const legend = svgbrush.select("#line-legend");
+  var gap = (width - legendWhitespace - rightWhitespace) * 0.050;
+  var legendrect = (width - legendWhitespace - rightWhitespace) * 0.025;
+  var legendrectheight = 5;
+  var marginleft = legendrect / 2;
+  var textmarginleft = 5;
+  legend.selectAll("rect")
+    .data(labeldata)
+    .join(
+      enter => enter.append("rect")
+        .attr("x", (d, i) => marginleft + legendWhitespace + (legendrect + gap) * i)
+        .attr("y", legendrectheight)
+        .attr("height", legendrectheight) 
+        .attr("width", legendrect)
+        .attr("fill", (d, i) => linecolors[i]),
+      update => update
+        .attr("x", (d, i) => marginleft + legendWhitespace + (legendrect + gap) * i),
+      exit => exit.remove()
+    )
+ 
+  legend.selectAll("text")
+    .data(labeldata)
+    .join(
+      enter => enter.append("text")
+        .attr("x", (d, i) => marginleft + legendWhitespace + (legendrect + gap) * i + legendrect + textmarginleft)
+        .attr("y", legendrectheight * 1.5)
+        .attr("height", legendrectheight)
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", ".5em")
+        .text((d) => d),
+      update => update
+        .attr("x", (d, i) => marginleft + legendWhitespace + (legendrect + gap) * i + legendrect + textmarginleft)
+        .attr("font-size", ".5em")
+        .text((d) => d),
+      exit => exit.remove()
+    )
+  
+  
+}
+
 function genGradientLegend() {
   var tickp = [];
   const ext = d3.extent(grad.domain());
@@ -691,7 +749,7 @@ function genGradientLegend() {
   rightmargin.append("svg")
     .attr("id", "color-legend")
     .attr("stroke-width", "0.5px")
-    .attr("x", "50%")
+    .attr("x", "25%")
     .attr("y", 1)
     .attr("height", squareSize * rows)
     .append("rect")
@@ -810,6 +868,8 @@ function lineChart() {
           .attr("stroke", (d, i) => linecolors[i])),
       exit => exit.remove()
     )
+  
+  genLineLegend();
 }
 
 function brushmove({selection}) {
