@@ -289,7 +289,10 @@ hm.append("g")
 hm.append("g")
   .classed("yearlabels", true)
   .attr("pointer-events", "none");
-  
+
+function testtouch(event) {
+  console.log(event);
+}
 function generateChart(d) {
   // update variables dependent on zoom level
 
@@ -317,6 +320,7 @@ function generateChart(d) {
           .on("drag", dragged)
           .on("end", null))
         .call(zoomer)
+          .on("zoom", pan)
           .on("wheel.zoom", null)
           .on("wheel", pan)
         .call (enter => enter.transition(dt)
@@ -452,7 +456,13 @@ function generateChart(d) {
 }
 
 function dragstart(event) {
-  dragdx = event.sourceEvent.x
+  if (event.sourceEvent.type == "touchstart") {
+    dragdx = event.sourceEvent.touches[0].clientX
+    console.log(`dragdx: ${dragdx}`);
+  }
+  else{
+    dragdx = event.sourceEvent.x
+  }
   heatsvg.attr("cursor", "grabbing");
 }
 
@@ -462,7 +472,19 @@ function dragend() {
 }
 
 function dragged(event, d) {
-  var newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.x - dragdx) / dragspeed;
+  console.log(event.sourceEvent.touches[0].clientX);
+  console.log(`dragging: ${dragdx}`);
+  var newx;
+  if (event.sourceEvent.type == "touchmove") {
+    console.log(parseFloat(heatsvg.attr("x")) + event.sourceEvent.touches[0].clientX - dragdx);
+
+    newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.touches[0].clientX - dragdx) / dragspeed;
+    console.log(newx);
+  }
+  else {
+    newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.x - dragdx) / dragspeed;
+  }
+  console.log(`newx: ${newx}`);
   if (newx > 0) {
     console.log(1);
     heatsvg.attr("x", 0);
