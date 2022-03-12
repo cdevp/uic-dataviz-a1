@@ -32,19 +32,19 @@ body {
     width: 100%;
 }
 
+#chart-title {
+    height: 5%;
+}
+
 #divider-1 {
-    height: 2.5%;
+    height: 1.0%;
     width: 100%;
     position: relative;
 
 }
 
-div {
-    word-wrap: break-word;
-    margin-top: 5px;
-    margin-bottom: 5px;
-}
 svg {
+    display: flex;
     overflow: auto;
 }
 

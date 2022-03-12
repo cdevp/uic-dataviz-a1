@@ -33,7 +33,7 @@ var hm;
 var botrow;
 var leftcol;
 var dragdx = 0;
-var dragspeed = 15;
+var dragspeed = 1;
 var xaxis, yaxis;
 var xrange = [legendWhitespace, width - rightWhitespace];
 var linedata = [];
@@ -50,19 +50,23 @@ var hlcirclerad = 2;
 var hlcirclecolor = "#ff007f";
 var hlcirclet;
 var hlsquare = null;
-
+var textbox = null;
+var caption = [{year: 0, series: "", temp: 0}];
 
 d3.select("#chart-title").append("svg")
   .attr("viewBox", [0,0,width,20])
+  .attr("display", "block")
+  .style("overflow", "visible")
   .append("text")
   .attr("x", legendWhitespace * 0.25)
-  .attr("y", 15)
+  .attr("y", 20)
   .text("Historical temperature (F\xB0) time series")
 d3.select("#d3-chart")
   .attr("width", "100%");
-d3.select("#linebrush")
+
 const svg = d3.select("#svg-chart")
   .attr("viewBox", [0,0,width,height + colorlegendWhitespace + legendHeight])
+
 const svgbrush = d3.select("#brush-chart")
   .attr("viewBox", [0,0,width,linechartheight]);
 
@@ -131,7 +135,6 @@ async function loadData() {
     grad = d3.scaleLinear()
       .domain([minTemp,-80,-40,-10,0,10,40,80,110,maxTemp])
       .range(gradientcolors);
-    console.log(grad.domain());
     origdata = data.filter(function (d) {
       if (((d.Year - 1880) % freq == 0) || d.Year == 2014) {
         return d;
@@ -148,11 +151,13 @@ async function loadData() {
       .select(".overlay")
         .on("mousedown touchstart", (event) => {event.stopImmediatePropagation(), brushclick(event)}, true)
         .on("mousemove", brushhover)
+        .on("mouseleave", clearHighlight)
         .on("wheel.zoom", null)
         .on("wheel", pan)
     
     svgbrush.select("#brush").select(".selection")
       .on("mousemove", brushhover)
+      .on("mouseleave", clearHighlight)
       .on("wheel.zoom", null)
       .on("wheel", pan)
 
@@ -161,6 +166,64 @@ async function loadData() {
     hlcircle = svgbrush.select("#hlcircle");
     updateCircle(0,0,0,0)
   }).catch((error) => {console.log(error);})
+}
+
+function updateTextBox(ox, oy) {
+  var y = oy - 5;
+  var x = ox + 15;
+  var textwidth = 60;
+  var textheight = 10;
+  if (zoomLevel > 1) textwidth = 80; 
+  svgbrush.select("#textbox").selectAll("rect")
+    .data(caption)
+    .join(
+      enter => enter.append("rect")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", d => {
+          if (d.year == 0) return "0";
+          return textwidth;
+        })
+        .attr("height", textheight)
+        .attr("fill", "white"),
+      update => update
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", d => {
+          if (d.year == 0) return "0";
+          return textwidth;
+        }),
+      exit => exit.remove()
+    );
+  svgbrush.select("#textbox").selectAll("text")
+    .data(caption)
+    .join(
+      enter => enter.append("text")
+        .attr("x", x + 1)
+        .attr("y", y + 1)
+        .attr("font-size", "0.5em")
+        .attr("dominant-baseline", "hanging")
+        .attr("fill", d => {
+          if (d.year == 0) return "white";
+          return "black";
+        })
+        .text(d => {
+          if (d.year = 0) return "";
+          return `${d.series}: [${d.year}, ${d.temp}]`
+        }),
+      update => update
+        .attr("x", x + 1)
+        .attr("y", y + 1)
+        .attr("fill", d => {
+          if (d.year == 0) return "white";
+          return "black";
+        })
+        .text(d => {
+          if (d.year == 0) return "";
+          return `${d.series}: [${d.year}, ${d.temp}]`
+        }),
+      exit => exit.remove()
+    );
 }
 
 function updateCircle(x, y, r, rad) {
@@ -188,7 +251,7 @@ function findPoint(px, row) {
   var sel = document.getElementById(`line-${row}`);
   var pathLength = sel.getTotalLength();
   var bounds = [0, pathLength];
-  var precision = 0.001;
+  var precision = 0.1;
   var op = sel.getPointAtLength((bounds[1] - bounds[0]) / 2 + bounds[0]);
   
   for (let i = 0; i < 50; i++) {
@@ -212,7 +275,6 @@ function brushhover(event) {
   var p = new DOMPoint(event.clientX, event.clientY);
   var s = document.getElementById("brush-chart");
   var coords = p.matrixTransform(s.getScreenCTM().inverse());
-
   clearHighlight(hlsquare);
 
   var min = 999999;
@@ -226,14 +288,26 @@ function brushhover(event) {
       yp = temp;
     }
   }
-
-  updateCircle(coords.x, yp, minr, hlcirclerad)
-  if (Math.abs(Math.round(xScale.invert(coords.x)) - xScale.invert(coords.x)) < 0.1) {
-    highlightSquare(Math.round(xScale.invert(coords.x)), minr);
+  var tempyear = Math.round(xScale.invert(coords.x));
+  if (Math.abs(tempyear - xScale.invert(coords.x)) < 0.5) {
+    updateCircle(xScale(tempyear), yScale(tempdata[minr * origdata.length + tempyear % 1880].temp), minr, hlcirclerad)
+    highlightSquare(tempyear, minr);
+    caption[0].year = tempyear;
+    caption[0].series = labeldata[minr]; 
+    caption[0].temp = tempdata[minr * origdata.length + tempyear % 1880].temp;
+    updateTextBox(coords.x, coords.y);
+  }
+  else {
+    updateCircle(coords.x, yp, minr, hlcirclerad)
   }
 }
 
 function clearHighlight() {
+  caption[0].year = 0;
+  caption[0].series = "";
+  caption[0].temp = 0;
+  updateTextBox(0, 0);
+
   if (hlsquare == null) return;
   const currsel = heatsvg.select(`#square-${hlsquare}`);
   currsel.attr("filter", "saturate(100%)");
@@ -252,17 +326,14 @@ function highlightSquare(year, row) {
   currsel.attr("filter", "saturate(300%)");
   d3.select("#hmtemp-" + currsel.attr("hidid"))
     .style("opacity", "100%")
-
 }
 
 function brushclick(event) {
-  console.log("clicked on rush");
   var p = new DOMPoint(event.layerX, event.layerY);
   var s = document.getElementById("brush-chart");
   var coords = p.matrixTransform(s.getScreenCTM().inverse());
   var brushw = parseFloat(svgbrush.select(".selection").attr("width"));
   var overw = parseFloat(svgbrush.select(".overlay").attr("width"));
-  console.log(event);
   if (event.buttons != 1) return;
   if (coords.x + brushw > overw + legendWhitespace) {
     heatsvg.attr("x", -(overw - brushw) * lintohm);
@@ -270,7 +341,6 @@ function brushclick(event) {
       .call(brush.move, [overw - brushw + legendWhitespace, legendWhitespace + overw]);
   }
   else {
-    console.log(coords);
     heatsvg.attr("x", -(brushw - 100) * lintohm);
     svgbrush.select("#brush")
       .call(brush.move, [coords.x, coords.x + brushw]);
@@ -302,9 +372,6 @@ hm.append("g")
 
 function generateChart(d) {
   // update variables dependent on zoom level
-
-  console.log("temp data:");
-  console.log(tempdata); 
 
   const dt = d3.select("#hmsvg").transition().duration(250).ease(d3.easeCubicOut); // .heatmap transition instance definition
 
@@ -385,6 +452,7 @@ function generateChart(d) {
       .join(
         enter => enter,
         update => update
+          .attr("fill", (d) => (parseInt(d.temp) > -15 & parseInt(d.temp) < 15) ? "black" : "white")
           .text(d => d.temp),
        exit => exit.remove()); 
   
@@ -517,34 +585,28 @@ function dragged(event, d) {
     newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.x - dragdx) / dragspeed;
   }
   if (newx > 0) {
-    console.log(1);
     heatsvg.attr("x", 0);
     svgbrush.select("#brush").select(".selection")
       .attr("x", legendWhitespace)
   }
   else if (newx < -maxtx) {
-    console.log(2);
     heatsvg.attr("x", -maxtx);
     svgbrush.select("#brush").select(".selection")
       .attr("x", maxtx / lintohm + legendWhitespace)
   }
   else {
-    console.log(3);
     heatsvg.attr("x", newx);
     svgbrush.select("#brush").select(".selection")
       .attr("x", -newx / lintohm + legendWhitespace)
   }
 
-  console.log("drag end");
 }
 
 function zoomed() {
-  console.log("zooming")
   return;
 }
 
 function pan(event) {
-  console.log("wheel pan");
   var source = d3.select(event.target).attr("class");
   var posx = parseFloat(heatsvg.attr("x")) + parseFloat(d3.select(event.target).attr("x"));
   var yearidx =  Math.floor((parseFloat(d3.select(event.target).attr("x")) - legendWhitespace) / (squareSize + border));
@@ -553,10 +615,8 @@ function pan(event) {
   var row = 0;
   if (source == "hmsquare") {
     row = parseInt(d3.select(event.target).attr("hidid") / 135);
-    console.log(`row: ${row}`);
   }
   if (event.shiftKey || event.ctrlKey) {
-    console.log("zooming with wheel");
     updateCircle(0,0,0,0); 
     if (event.wheelDeltaY > 0) {
       if (zoomLevel == 1 && row == 0) zoomLevel = 2;
@@ -582,14 +642,12 @@ function pan(event) {
     if (left || zoomout) hypx = posx - (yearidx * (squareSize + border) + legendWhitespace);
     else hypx = posx - (yearidx * (squareSize + border) + legendWhitespace) + squareSize;
 
-    console.log("positionining in: " + hypx);
     if (hypx > 0) {
       heatsvg.attr("x", 0);
       svgbrush.select("#brush")
         .call(brush.move, [legendWhitespace, legendWhitespace + viewablesquares * tickgap]);
     }
     else {
-      console.log("positioning");
       heatsvg.attr("x", hypx);
       svgbrush.select("#brush")
         .call(brush.move, [-(hypx/lintohm) + legendWhitespace, -(hypx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
@@ -611,7 +669,6 @@ function pan(event) {
       heatsvg.attr("x", newx);
       svgbrush.select("#brush")
         .call(brush.move, [-(newx/lintohm) + legendWhitespace, -(newx/lintohm) + legendWhitespace + viewablesquares * tickgap]);
-      console.log(newx/lintohm + legendWhitespace)
     }
   }
 }
@@ -631,7 +688,6 @@ function showTemp() {
     .style("opacity", "100%")
   
   var id = parseInt(d3.select(this).attr("hidid"));
-  console.log(`${tempdata[id].year}  ${tempdata[id].temp}`);
   updateCircle(xScale(tempdata[id].year), yScale(tempdata[id].temp), tempdata[id].row, hlcirclerad);
 }
 
@@ -755,10 +811,8 @@ function genGradientLegend() {
   const ext = d3.extent(grad.domain());
   const mag = ext[1] - ext[0];
   const gradoffsets = d3.map(grad.domain(), (d) => (d + 80) / 190);
-  console.log(gradoffsets);
   linearGradient.selectAll("stop")
     .data(grad.domain().map((x, i, n) => {
-        console.log(n.length);
         if ((i > 0) && (i < (n.length - 1))) {
           tickp.push((1 - gradoffsets[i] * 0.8) * (squareSize * rows - 40))
           return {offset: `${10 + 80*i/(n.length - 1)}%`, color: grad(x)};
@@ -789,7 +843,6 @@ function genGradientLegend() {
       .style("fill", "url(#lg)")
 
   var l = maxTemp - minTemp;
-  console.log(tickp);
 
   d3.select("#color-legend").append("g")
     .classed("color-legend-labels", true)
@@ -827,7 +880,6 @@ function zoomUpdate(d) {
   }
   squareSize = (height - margintop - border * rows - textSize) / rows;
   viewablesquares = Math.floor((width - legendWhitespace - rightWhitespace) / (squareSize + border));
-  console.log("squares in view: " + viewablesquares);
   extractLabels(d);
   extractTemp(d);
   lineDataUpdate();
@@ -852,6 +904,9 @@ svgbrush.append("g")
 svgbrush.append("g")
   .attr("id", "highlight-circles");
 
+svgbrush.append("g")
+  .attr("id", "textbox");
+
 const linecolors = ["#0a1423","#28518d","#266a2c","#d89000","#ff8454","#aa00ff","#ff0004","#900000"]
 function lineChart() {
   xScale = d3.scaleLinear(d3.extent(xaxis), xrange);
@@ -865,7 +920,8 @@ function lineChart() {
   brush = d3.brushX()
   .extent([[legendWhitespace, 0], [Math.ceil(legendWhitespace + (origdata.length - 1) * tickgap) + 1, linechartheight]])
   .on("brush", brushmove)
-  .on("end", (event) => console.log(event));
+  .on("end", null)
+
   const xAxis = d3.axisBottom(xScale)
     .tickFormat(d3.format("c"));
   const yAxis = d3.axisLeft(yScale).ticks();
