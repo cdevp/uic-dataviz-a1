@@ -228,7 +228,7 @@ function brushhover(event) {
   }
 
   updateCircle(coords.x, yp, minr, hlcirclerad)
-  if (Math.abs(Math.round(xScale.invert(coords.x)) - xScale.invert(coords.x)) < 0.15) {
+  if (Math.abs(Math.round(xScale.invert(coords.x)) - xScale.invert(coords.x)) < 0.1) {
     highlightSquare(Math.round(xScale.invert(coords.x)), minr);
   }
 }
@@ -325,7 +325,7 @@ function generateChart(d) {
         .call(d3.drag()
           .on("start", dragstart)
           .on("drag", dragged)
-          .on("end", null))
+          .on("end", dragend))
         .call(zoomer)
           .on("zoom", pan)
           .on("wheel.zoom", null)
@@ -550,16 +550,25 @@ function pan(event) {
   var yearidx =  Math.floor((parseFloat(d3.select(event.target).attr("x")) - legendWhitespace) / (squareSize + border));
   var left = (event.layerX / squareSize) < 0.5 ? true : false;
   var zoomout = false;
-  
+  var row = 0;
+  if (source == "hmsquare") {
+    row = parseInt(d3.select(event.target).attr("hidid") / 135);
+    console.log(`row: ${row}`);
+  }
   if (event.shiftKey || event.ctrlKey) {
     console.log("zooming with wheel");
     updateCircle(0,0,0,0); 
     if (event.wheelDeltaY > 0) {
-      zoomLevel = Math.min(zoomLevel + 1, 4);
+      if (zoomLevel == 1 && row == 0) zoomLevel = 2;
+      else if (zoomLevel == 1 && row == 1) zoomLevel = 3;
+      else if (zoomLevel == 2 || zoomLevel == 3) zoomLevel = 4;
+      else zoomLevel = Math.min(zoomLevel + 1, 4);
       zoomout = false;
     }
     else {
-      zoomLevel = Math.max(0, zoomLevel - 1);
+      if (zoomLevel == 4 && row > 3) zoomLevel = 3;
+      else if(zoomLevel == 4 && row < 4) zoomLevel = 2;
+      else zoomLevel = Math.max(0, zoomLevel - 1);
       zoomout = true;
     }
     zoomUpdate(origdata);
@@ -567,8 +576,11 @@ function pan(event) {
     generateChart(origdata) 
 
     var hypx = 0;
+    /**
+     * posx = position of bar 
+     */
     if (left || zoomout) hypx = posx - (yearidx * (squareSize + border) + legendWhitespace);
-    else if (!zoomout) hypx = posx - (yearidx * (squareSize + border) + legendWhitespace) + squareSize;
+    else hypx = posx - (yearidx * (squareSize + border) + legendWhitespace) + squareSize;
 
     console.log("positionining in: " + hypx);
     if (hypx > 0) {
