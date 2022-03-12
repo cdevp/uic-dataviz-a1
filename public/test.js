@@ -458,7 +458,6 @@ function generateChart(d) {
 function dragstart(event) {
   if (event.sourceEvent.type == "touchstart") {
     dragdx = event.sourceEvent.touches[0].clientX
-    console.log(`dragdx: ${dragdx}`);
   }
   else{
     dragdx = event.sourceEvent.x
@@ -472,31 +471,35 @@ function dragend() {
 }
 
 function dragged(event, d) {
-  console.log(event.sourceEvent.touches[0].clientX);
-  console.log(`dragging: ${dragdx}`);
   var newx;
-  if (event.sourceEvent.type == "touchmove") {
-    console.log(parseFloat(heatsvg.attr("x")) + event.sourceEvent.touches[0].clientX - dragdx);
+  var overw = parseFloat(svgbrush.select(".overlay").attr("width"));
+  var brushw = parseFloat(svgbrush.select(".selection").attr("width"));
 
+  if (event.sourceEvent.type == "touchmove") {
     newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.touches[0].clientX - dragdx) / dragspeed;
-    console.log(newx);
   }
   else {
     newx = parseFloat(heatsvg.attr("x")) + (event.sourceEvent.x - dragdx) / dragspeed;
   }
-  console.log(`newx: ${newx}`);
   if (newx > 0) {
     console.log(1);
     heatsvg.attr("x", 0);
+    svgbrush.select("#brush").select(".selection")
+      .attr("x", legendWhitespace)
   }
   else if (newx < -maxtx) {
     console.log(2);
     heatsvg.attr("x", -maxtx);
+    svgbrush.select("#brush").select(".selection")
+      .attr("x", maxtx / lintohm + legendWhitespace)
   }
   else {
     console.log(3);
     heatsvg.attr("x", newx);
+    svgbrush.select("#brush").select(".selection")
+      .attr("x", -newx / lintohm + legendWhitespace)
   }
+
   console.log("drag end");
 }
 
