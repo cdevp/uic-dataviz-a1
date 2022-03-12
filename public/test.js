@@ -60,7 +60,7 @@ d3.select("#chart-title").append("svg")
   .append("text")
   .attr("x", legendWhitespace * 0.25)
   .attr("y", 20)
-  .text("Historical temperature (F\xB0) time series")
+  .text("Historical zonal annual means (F\xB0) time series (1880 - 2014)")
 d3.select("#d3-chart")
   .attr("width", "100%");
 
@@ -616,7 +616,7 @@ function pan(event) {
   if (source == "hmsquare") {
     row = parseInt(d3.select(event.target).attr("hidid") / 135);
   }
-  if (event.shiftKey || event.ctrlKey) {
+  if (source == "hmsquare" && (event.shiftKey || event.ctrlKey)) {
     updateCircle(0,0,0,0); 
     if (event.wheelDeltaY > 0) {
       if (zoomLevel == 1 && row == 0) zoomLevel = 2;
