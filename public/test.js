@@ -490,7 +490,7 @@ function pan(event) {
   var left = (event.layerX / squareSize) < 0.5 ? true : false;
   var zoomout = false;
   
-  if (event.shiftKey) {
+  if (event.shiftKey || event.ctrlKey) {
     console.log("zooming with wheel");
     updateCircle(0,0,0,0); 
     if (event.wheelDeltaY > 0) {
