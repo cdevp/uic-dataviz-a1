@@ -21,11 +21,22 @@ body {
 
 #center {
     display: table-cell;
+    height: 100%;
+    width: 100%;
     vertical-align: top;
 }
 
 #content {
-    margin-top: 5%;
+    margin-top: 2.5%;
+    height: 100%;
+    width: 100%;
+}
+
+#divider-1 {
+    height: 2.5%;
+    width: 100%;
+    position: relative;
+
 }
 
 div {

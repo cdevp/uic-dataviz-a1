@@ -17,7 +17,7 @@ var smallest = 20;
 var largest = 30;
 const height = (largest + border) * 8;
 const brushheight = (largest + border) * 2;
-const linechartheight = height / 1.5;
+const linechartheight = height / 1.20;
 var maxtx = 0;
 var grad;
 var categories = 0;
